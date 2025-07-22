@@ -1,0 +1,343 @@
+{
+  "Name": "placeholder-name",
+  "InputAttachments": [
+    {
+      "InputId": "placeholder-input-id",
+      "InputSettings": {
+        "SourceEndBehavior": "CONTINUE",
+        "InputFilter": "AUTO",
+        "FilterStrength": 1,
+        "DeblockFilter": "DISABLED",
+        "DenoiseFilter": "DISABLED",
+        "Smpte2038DataPreference": "IGNORE",
+        "AudioSelectors": [],
+        "CaptionSelectors": []
+      }
+    }
+  ],
+  "Destinations": [
+    {
+      "Id": "destination1",
+      "Settings": [],
+      "MediaPackageSettings": [
+        {
+          "ChannelId": "placeholder-mediapackage-id"
+        }
+      ]
+    }
+  ],
+  "EncoderSettings": {
+    "AudioDescriptions": [
+      {
+        "CodecSettings": {
+          "AacSettings": {
+            "InputType": "NORMAL",
+            "Bitrate": 128000,
+            "CodingMode": "CODING_MODE_2_0",
+            "RawFormat": "NONE",
+            "Spec": "MPEG4",
+            "Profile": "LC",
+            "RateControlMode": "CBR",
+            "SampleRate": 44100
+          }
+        },
+        "AudioTypeControl": "FOLLOW_INPUT",
+        "LanguageCodeControl": "USE_CONFIGURED",
+        "LanguageCode": "pol",
+        "Name": "audio_4",
+        "StreamName": "polski"
+      }
+    ],
+    "CaptionDescriptions": [],
+    "GlobalConfiguration": {
+      "SupportLowFramerateInputs": "DISABLED",
+      "InputEndAction": "NONE",
+      "OutputTimingSource": "INPUT_CLOCK",
+      "OutputLockingMode": "EPOCH_LOCKING"
+    },
+    "OutputGroups": [
+      {
+        "OutputGroupSettings": {
+          "MediaPackageGroupSettings": {
+            "Destination": {
+              "DestinationRefId": "destination1"
+            }
+          }
+        },
+        "Name": "playlive-12-channel",
+        "Outputs": [
+          {
+            "OutputSettings": {
+              "MediaPackageOutputSettings": {}
+            },
+            "OutputName": "720p",
+            "VideoDescriptionName": "720p",
+            "AudioDescriptionNames": [],
+            "CaptionDescriptionNames": []
+          },
+          {
+            "OutputSettings": {
+              "MediaPackageOutputSettings": {}
+            },
+            "OutputName": "540p",
+            "VideoDescriptionName": "540p",
+            "AudioDescriptionNames": [],
+            "CaptionDescriptionNames": []
+          },
+          {
+            "OutputSettings": {
+              "MediaPackageOutputSettings": {}
+            },
+            "OutputName": "360p",
+            "VideoDescriptionName": "360p",
+            "AudioDescriptionNames": [],
+            "CaptionDescriptionNames": []
+          },
+          {
+            "OutputSettings": {
+              "MediaPackageOutputSettings": {}
+            },
+            "OutputName": "270p",
+            "VideoDescriptionName": "270p",
+            "AudioDescriptionNames": [
+              "audio_4"
+            ],
+            "CaptionDescriptionNames": []
+          },
+          {
+            "OutputSettings": {
+              "MediaPackageOutputSettings": {}
+            },
+            "OutputName": "1080p",
+            "VideoDescriptionName": "1080p",
+            "AudioDescriptionNames": [],
+            "CaptionDescriptionNames": []
+          }
+        ]
+      }
+    ],
+    "TimecodeConfig": {
+      "Source": "SYSTEMCLOCK"
+    },
+    "VideoDescriptions": [
+      {
+        "CodecSettings": {
+          "H264Settings": {
+            "AfdSignaling": "NONE",
+            "ColorMetadata": "INSERT",
+            "AdaptiveQuantization": "MEDIUM",
+            "Bitrate": 3800000,
+            "EntropyEncoding": "CABAC",
+            "FlickerAq": "ENABLED",
+            "ForceFieldPictures": "DISABLED",
+            "FramerateControl": "SPECIFIED",
+            "FramerateNumerator": 25,
+            "FramerateDenominator": 1,
+            "GopBReference": "DISABLED",
+            "GopClosedCadence": 1,
+            "GopNumBFrames": 2,
+            "GopSize": 2,
+            "GopSizeUnits": "SECONDS",
+            "SubgopLength": "FIXED",
+            "ScanType": "PROGRESSIVE",
+            "Level": "H264_LEVEL_AUTO",
+            "LookAheadRateControl": "MEDIUM",
+            "NumRefFrames": 1,
+            "ParControl": "SPECIFIED",
+            "ParNumerator": 1,
+            "ParDenominator": 1,
+            "Profile": "HIGH",
+            "RateControlMode": "CBR",
+            "Syntax": "DEFAULT",
+            "SceneChangeDetect": "ENABLED",
+            "SpatialAq": "ENABLED",
+            "TemporalAq": "ENABLED",
+            "TimecodeInsertion": "PIC_TIMING_SEI"
+          }
+        },
+        "Height": 720,
+        "Name": "720p",
+        "RespondToAfd": "NONE",
+        "Sharpness": 50,
+        "ScalingBehavior": "DEFAULT",
+        "Width": 1280
+      },
+      {
+        "CodecSettings": {
+          "H264Settings": {
+            "AfdSignaling": "NONE",
+            "ColorMetadata": "INSERT",
+            "AdaptiveQuantization": "MEDIUM",
+            "Bitrate": 2400000,
+            "EntropyEncoding": "CABAC",
+            "FlickerAq": "ENABLED",
+            "ForceFieldPictures": "DISABLED",
+            "FramerateControl": "SPECIFIED",
+            "FramerateNumerator": 25,
+            "FramerateDenominator": 1,
+            "GopBReference": "DISABLED",
+            "GopClosedCadence": 1,
+            "GopNumBFrames": 2,
+            "GopSize": 2,
+            "GopSizeUnits": "SECONDS",
+            "SubgopLength": "FIXED",
+            "ScanType": "PROGRESSIVE",
+            "Level": "H264_LEVEL_AUTO",
+            "LookAheadRateControl": "MEDIUM",
+            "NumRefFrames": 1,
+            "ParControl": "SPECIFIED",
+            "ParNumerator": 1,
+            "ParDenominator": 1,
+            "Profile": "MAIN",
+            "RateControlMode": "CBR",
+            "Syntax": "DEFAULT",
+            "SceneChangeDetect": "ENABLED",
+            "SpatialAq": "ENABLED",
+            "TemporalAq": "ENABLED",
+            "TimecodeInsertion": "PIC_TIMING_SEI"
+          }
+        },
+        "Height": 540,
+        "Name": "540p",
+        "RespondToAfd": "NONE",
+        "Sharpness": 50,
+        "ScalingBehavior": "DEFAULT",
+        "Width": 960
+      },
+      {
+        "CodecSettings": {
+          "H264Settings": {
+            "AfdSignaling": "NONE",
+            "ColorMetadata": "INSERT",
+            "AdaptiveQuantization": "MEDIUM",
+            "Bitrate": 1000000,
+            "EntropyEncoding": "CABAC",
+            "FlickerAq": "ENABLED",
+            "ForceFieldPictures": "DISABLED",
+            "FramerateControl": "SPECIFIED",
+            "FramerateNumerator": 25,
+            "FramerateDenominator": 1,
+            "GopBReference": "DISABLED",
+            "GopClosedCadence": 1,
+            "GopNumBFrames": 2,
+            "GopSize": 2,
+            "GopSizeUnits": "SECONDS",
+            "SubgopLength": "FIXED",
+            "ScanType": "PROGRESSIVE",
+            "Level": "H264_LEVEL_AUTO",
+            "LookAheadRateControl": "MEDIUM",
+            "NumRefFrames": 1,
+            "ParControl": "SPECIFIED",
+            "ParNumerator": 1,
+            "ParDenominator": 1,
+            "Profile": "MAIN",
+            "RateControlMode": "CBR",
+            "Syntax": "DEFAULT",
+            "SceneChangeDetect": "ENABLED",
+            "SpatialAq": "ENABLED",
+            "TemporalAq": "ENABLED",
+            "TimecodeInsertion": "PIC_TIMING_SEI"
+          }
+        },
+        "Height": 360,
+        "Name": "360p",
+        "RespondToAfd": "NONE",
+        "Sharpness": 50,
+        "ScalingBehavior": "DEFAULT",
+        "Width": 640
+      },
+      {
+        "CodecSettings": {
+          "H264Settings": {
+            "AfdSignaling": "NONE",
+            "ColorMetadata": "INSERT",
+            "AdaptiveQuantization": "MEDIUM",
+            "Bitrate": 650000,
+            "EntropyEncoding": "CABAC",
+            "FlickerAq": "ENABLED",
+            "ForceFieldPictures": "DISABLED",
+            "FramerateControl": "SPECIFIED",
+            "FramerateNumerator": 25,
+            "FramerateDenominator": 1,
+            "GopBReference": "DISABLED",
+            "GopClosedCadence": 1,
+            "GopNumBFrames": 2,
+            "GopSize": 2,
+            "GopSizeUnits": "SECONDS",
+            "SubgopLength": "FIXED",
+            "ScanType": "PROGRESSIVE",
+            "Level": "H264_LEVEL_AUTO",
+            "LookAheadRateControl": "MEDIUM",
+            "NumRefFrames": 1,
+            "ParControl": "SPECIFIED",
+            "ParNumerator": 1,
+            "ParDenominator": 1,
+            "Profile": "MAIN",
+            "RateControlMode": "CBR",
+            "Syntax": "DEFAULT",
+            "SceneChangeDetect": "ENABLED",
+            "SpatialAq": "ENABLED",
+            "TemporalAq": "ENABLED",
+            "TimecodeInsertion": "PIC_TIMING_SEI"
+          }
+        },
+        "Height": 270,
+        "Name": "270p",
+        "RespondToAfd": "NONE",
+        "Sharpness": 50,
+        "ScalingBehavior": "DEFAULT",
+        "Width": 480
+      },
+      {
+        "CodecSettings": {
+          "H264Settings": {
+            "AfdSignaling": "NONE",
+            "ColorMetadata": "INSERT",
+            "AdaptiveQuantization": "MEDIUM",
+            "Bitrate": 5300000,
+            "EntropyEncoding": "CABAC",
+            "FlickerAq": "ENABLED",
+            "ForceFieldPictures": "DISABLED",
+            "FramerateControl": "SPECIFIED",
+            "FramerateNumerator": 25,
+            "FramerateDenominator": 1,
+            "GopBReference": "DISABLED",
+            "GopClosedCadence": 1,
+            "GopNumBFrames": 2,
+            "GopSize": 2,
+            "GopSizeUnits": "SECONDS",
+            "SubgopLength": "FIXED",
+            "ScanType": "PROGRESSIVE",
+            "Level": "H264_LEVEL_AUTO",
+            "LookAheadRateControl": "MEDIUM",
+            "NumRefFrames": 1,
+            "ParControl": "SPECIFIED",
+            "ParNumerator": 1,
+            "ParDenominator": 1,
+            "Profile": "HIGH",
+            "RateControlMode": "CBR",
+            "Syntax": "DEFAULT",
+            "SceneChangeDetect": "ENABLED",
+            "SpatialAq": "ENABLED",
+            "TemporalAq": "ENABLED",
+            "TimecodeInsertion": "PIC_TIMING_SEI"
+          }
+        },
+        "Height": 1080,
+        "Name": "1080p",
+        "RespondToAfd": "NONE",
+        "Sharpness": 50,
+        "ScalingBehavior": "DEFAULT",
+        "Width": 1920
+      }
+    ]
+  },
+  "RoleArn": "placeholder-role-arn",
+  "InputSpecification": {
+    "Codec": "AVC",
+    "Resolution": "HD",
+    "MaximumBitrate": "MAX_10_MBPS"
+  },
+  "LogLevel": "INFO",
+  "ChannelClass": "SINGLE_PIPELINE"
+}

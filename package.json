@@ -1,0 +1,31 @@
+{
+  "name": "aws-media-tool-node",
+  "version": "1.0.0",
+  "description": "A Node.js application to manage AWS Media Services.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "aws",
+    "medialive",
+    "node"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.850.0",
+    "@aws-sdk/client-mediaconnect": "^3.848.0",
+    "@aws-sdk/client-medialive": "^3.540.0",
+    "@aws-sdk/client-mediapackage": "^3.848.0",
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/client-sts": "^3.848.0",
+    "dotenv": "^16.3.1",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
