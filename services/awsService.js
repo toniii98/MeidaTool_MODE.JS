@@ -189,7 +189,8 @@ async function createChannel(region, channelData) {
     const stsClient = new STSClient({ region, credentials });
     const identity = await stsClient.send(new GetCallerIdentityCommand({}));
     const accountId = identity.AccountId;
-    const roleArn = `arn:aws:iam::${accountId}:role/MediaLiveAccessRole`;
+    let roleArn = process.env.MEDIALIVE_ROLE_ARN;
+
     const templateName = channelData.channelClass === 'STANDARD' 
         ? 'standard_pipeline_template.json' 
         : 'single_pipeline_template.json';

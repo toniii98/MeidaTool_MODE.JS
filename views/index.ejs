@@ -83,11 +83,11 @@
                                         <input type="text" id="inputName" name="inputName" placeholder="np. moj-stream-rtmp" class="shadow-sm w-full border rounded-lg py-2 px-3" required>
                                     </div>
                                     <div class="mb-4">
-                                        <label for="inputClass" class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
-                                        <select id="inputClass" name="inputClass" class="shadow-sm w-full border rounded-lg py-2 px-3">
-                                            <option value="SINGLE_PIPELINE">Single Pipeline</option>
-                                            <option value="STANDARD">Standard (Dual Pipeline)</option>
-                                        </select>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
+                                        <div class="flex items-center space-x-4">
+                                            <label class="flex items-center"><input type="radio" name="inputClass" value="SINGLE_PIPELINE" class="form-radio" checked><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClass" value="STANDARD" class="form-radio"><span class="ml-2">Standard</span></label>
+                                        </div>
                                     </div>
                                     <div class="mb-4">
                                         <label for="securityGroupId" class="block text-sm font-bold text-gray-700 mb-2">Grupa Bezpieczeństwa</label>
@@ -114,8 +114,8 @@
                                     <div class="mb-4">
                                         <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
                                         <div class="flex items-center space-x-4">
-                                            <label><input type="radio" name="inputClassMc" value="SINGLE" @click="flowCount = 1" checked> Single</label>
-                                            <label><input type="radio" name="inputClassMc" value="STANDARD" @click="flowCount = 2"> Standard</label>
+                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="SINGLE" @click="flowCount = 1" checked><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="STANDARD" @click="flowCount = 2"><span class="ml-2">Standard</span></label>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -124,10 +124,10 @@
                                             <option value="" disabled selected>-- Wybierz flow --</option>
                                             <% if (mediaConnectFlows && mediaConnectFlows.length > 0) { %>
                                                 <% mediaConnectFlows.forEach(flow => { %>
-                                                    <option value="<%= flow.FlowArn %>"><%= flow.Name %> (<%= flow.AvailabilityZone %>)</option>
+                                                    <option value="<%= flow.FlowArn %>"><%= flow.Name %> (<%= flow.AvailabilityZone %> | <%= flow.Status %>)</option>
                                                 <% }); %>
                                             <% } else { %>
-                                                <option disabled>Brak aktywnych flow w tym regionie</option>
+                                                <option disabled>Brak flow w tym regionie</option>
                                             <% } %>
                                         </select>
                                     </div>
@@ -137,7 +137,7 @@
                                             <option value="">-- Wybierz drugi flow --</option>
                                             <% if (mediaConnectFlows && mediaConnectFlows.length > 0) { %>
                                                 <% mediaConnectFlows.forEach(flow => { %>
-                                                    <option value="<%= flow.FlowArn %>"><%= flow.Name %> (<%= flow.AvailabilityZone %>)</option>
+                                                    <option value="<%= flow.FlowArn %>"><%= flow.Name %> (<%= flow.AvailabilityZone %> | <%= flow.Status %>)</option>
                                                 <% }); %>
                                             <% } %>
                                         </select>
@@ -151,6 +151,13 @@
                                     <div class="mb-4">
                                         <label for="inputNameMp4" class="block text-sm font-bold text-gray-700 mb-2">Nazwa Inputu</label>
                                         <input type="text" id="inputNameMp4" name="inputName" placeholder="np. plik-z-s3" class="shadow-sm w-full border rounded-lg py-2 px-3" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
+                                        <div class="flex items-center space-x-4">
+                                            <label class="flex items-center"><input type="radio" name="inputClass" value="SINGLE_PIPELINE" class="form-radio" checked><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClass" value="STANDARD" class="form-radio"><span class="ml-2">Standard</span></label>
+                                        </div>
                                     </div>
                                     <div class="mb-4">
                                         <label for="s3FilePath" class="block text-sm font-bold text-gray-700 mb-2">Wybierz plik .mp4</label>
@@ -178,11 +185,11 @@
                                         <input type="text" id="inputNameLink" name="inputName" placeholder="np. urzadzenie-link" class="shadow-sm w-full border rounded-lg py-2 px-3" required>
                                     </div>
                                     <div class="mb-4">
-                                        <label for="linkInputClass" class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
-                                        <select id="linkInputClass" name="inputClass" x-model="inputClass" class="shadow-sm w-full border rounded-lg py-2 px-3">
-                                            <option value="SINGLE_PIPELINE">Single Pipeline</option>
-                                            <option value="STANDARD">Standard (Dual Pipeline)</option>
-                                        </select>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
+                                        <div class="flex items-center space-x-4">
+                                            <label class="flex items-center"><input type="radio" name="inputClassRadioLink" value="SINGLE_PIPELINE" x-model="inputClass"><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClassRadioLink" value="STANDARD" x-model="inputClass"><span class="ml-2">Standard</span></label>
+                                        </div>
                                     </div>
                                     <div class="mb-4">
                                         <label for="linkDeviceId1" class="block text-sm font-bold text-gray-700 mb-2">Urządzenie Link (Pipeline 0)</label>

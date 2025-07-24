@@ -15,7 +15,7 @@ const {
     listInputDevices,
     listInputSecurityGroups,
     listMediaConnectFlows,
-    listMediaPackageChannels, // Nowy import
+    listMediaPackageChannels,
     createRtmpInput,
     createMp4Input,
     createChannel,
@@ -47,7 +47,7 @@ app.get('/', async (req, res) => {
   let linkDevices = [];
   let inputSecurityGroups = [];
   let mediaConnectFlows = [];
-  let mediaPackageChannels = []; // Nowa zmienna
+  let mediaPackageChannels = [];
   const { message, messageStatus } = req.query;
   let error = null; 
   const currentRegion = req.query.region || process.env.AWS_REGION;
@@ -68,7 +68,7 @@ app.get('/', async (req, res) => {
       listInputDevices(currentRegion),
       listInputSecurityGroups(currentRegion),
       listMediaConnectFlows(currentRegion),
-      listMediaPackageChannels(currentRegion) // Pobieramy kanały MediaPackage
+      listMediaPackageChannels(currentRegion)
     ]);
     channels = channelsResponse;
     inputs = inputsResponse;
@@ -96,7 +96,7 @@ app.get('/', async (req, res) => {
     linkDevices,
     inputSecurityGroups,
     mediaConnectFlows,
-    mediaPackageChannels, // Przekazujemy listę do widoku
+    mediaPackageChannels,
     currentRegion,
     message,
     messageStatus
@@ -127,9 +127,13 @@ app.post('/inputs/create-rtmp', async (req, res) => {
 });
 
 app.post('/inputs/create-mp4', async (req, res) => {
-    const { inputName, s3FilePath, region } = req.body;
+    const { inputName, inputClass, s3FilePath, region } = req.body;
     const bucketName = process.env.S3_ASSET_BUCKET;
     const urls = [`s3://${bucketName}/${s3FilePath}`];
+    // Jeśli wybrano klasę STANDARD, AWS wymaga dwóch identycznych URLi
+    if (inputClass === 'STANDARD') {
+        urls.push(`s3://${bucketName}/${s3FilePath}`);
+    }
     try {
         await createMp4Input(region, inputName, urls);
         res.redirect(`/?region=${region}&message=Input MP4 '${inputName}' został pomyślnie utworzony.&messageStatus=success`);
