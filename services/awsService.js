@@ -120,7 +120,6 @@ async function listMediaConnectFlows(region) {
     try {
         const command = new ListFlowsCommand({});
         const response = await mediaConnectClient.send(command);
-        // Usunięto filtr statusu - teraz zwraca wszystkie flow
         return response.Flows || [];
     } catch (error) {
         console.error(`Error listing MediaConnect flows in ${region}:`, error);
@@ -190,19 +189,25 @@ async function createChannel(region, channelData) {
     const identity = await stsClient.send(new GetCallerIdentityCommand({}));
     const accountId = identity.AccountId;
     let roleArn = process.env.MEDIALIVE_ROLE_ARN;
-
     const templateName = channelData.channelClass === 'STANDARD' 
         ? 'standard_pipeline_template.json' 
         : 'single_pipeline_template.json';
     const templatePath = path.join(__dirname, '..', 'templates', templateName);
     const template = JSON.parse(await fs.readFile(templatePath, 'utf-8'));
 
+    // Dynamiczne uzupełnianie szablonu
     template.Name = channelData.channelName;
     template.RoleArn = roleArn;
     template.InputAttachments[0].InputId = channelData.inputId;
     
     if (template.Destinations && template.Destinations[0].MediaPackageSettings) {
         template.Destinations[0].MediaPackageSettings[0].ChannelId = channelData.mediaPackageChannelId;
+        
+        // NOWA ZMIANA: Ustawianie nazwy grupy wyjściowej
+        if (template.EncoderSettings && template.EncoderSettings.OutputGroups && template.EncoderSettings.OutputGroups[0]) {
+            template.EncoderSettings.OutputGroups[0].Name = channelData.mediaPackageChannelId;
+        }
+
     } else {
         throw new Error("Szablon JSON nie jest skonfigurowany dla wyjścia MediaPackage.");
     }
