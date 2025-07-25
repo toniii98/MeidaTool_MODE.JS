@@ -31,6 +31,21 @@ function getCredentials() {
     };
 }
 
+// Funkcja generująca spójne nazwy dla zasobów AWS na podstawie nazwy eventu
+function generateResourceNames(eventName) {
+    // Zamień spacje na podkreślenia i usuń niedozwolone znaki
+    const baseName = eventName
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '')
+        .substring(0, 40); // Ogranicz długość do 40 znaków
+    
+    return {
+        channelName: `${baseName}_channel`,
+        inputName: `${baseName}_input`,
+        outputName: `${baseName}_output`
+    };
+}
+
 async function getAvailableRegions() {
     const credentials = getCredentials();
     const ec2Client = new EC2Client({ credentials, region: "us-east-1" });
@@ -141,7 +156,7 @@ async function listMediaPackageChannels(region) {
 }
 
 // --- Funkcje tworzące zasoby ---
-async function createRtmpInput(region, name, inputClass, securityGroupId) {
+async function createRtmpInput(region, name, inputClass = 'STANDARD', securityGroupId) {
     const credentials = getCredentials();
     const mediaLiveClient = new MediaLiveClient({ region, credentials });
     const destinations = (inputClass === 'STANDARD') 
@@ -323,5 +338,6 @@ module.exports = {
     startChannel,
     stopChannel,
     deleteChannel,
-    deleteInput
+    deleteInput,
+    generateResourceNames
 };

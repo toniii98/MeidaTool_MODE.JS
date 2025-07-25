@@ -1,0 +1,4 @@
+{
+    "_comment": "Struktura danych eventów. Kluczem głównym jest ID kanału MediaLive. Każdy event zawiera: eventName, channelId, inputIds[], outputIds[], lifetime{start,end}, createdAt, updatedAt, scheduler[]",
+    "events": {}
+  }

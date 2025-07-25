@@ -2,6 +2,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs').promises;
 
 // Ładowanie zmiennych środowiskowych
 dotenv.config();
@@ -24,7 +25,8 @@ const {
     startChannel,
     stopChannel,
     deleteChannel,
-    deleteInput
+    deleteInput,
+    generateResourceNames
 } = require('./services/awsService');
 
 // Inicjalizacja aplikacji Express
@@ -35,7 +37,27 @@ const port = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// --- Funkcje pomocnicze ---
+async function readEventsFile() {
+    try {
+        const eventsPath = path.join(__dirname, 'events.json');
+        const data = await fs.readFile(eventsPath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return { events: {} };
+        }
+        throw error;
+    }
+}
+
+async function writeEventsFile(data) {
+    const eventsPath = path.join(__dirname, 'events.json');
+    await fs.writeFile(eventsPath, JSON.stringify(data, null, 2), 'utf8');
+}
 
 // --- Definicja Tras (Routes) ---
 
@@ -103,7 +125,124 @@ app.get('/', async (req, res) => {
   });
 });
 
-// Trasy API
+// Trasy API dla eventów
+app.get('/api/events', async (req, res) => {
+    try {
+        const events = await readEventsFile();
+        res.json(events);
+    } catch (error) {
+        console.error('Error reading events file:', error);
+        res.status(500).json({ error: 'Failed to read events data' });
+    }
+});
+
+app.post('/api/events/create', async (req, res) => {
+    const { eventName, lifetimeStart, region } = req.body;
+    
+    if (!eventName || !lifetimeStart || !region) {
+        return res.status(400).json({ error: 'Missing required fields: eventName, lifetimeStart, region' });
+    }
+
+    try {
+        // Generuj nazwy zasobów
+        const resourceNames = generateResourceNames(eventName);
+        
+        // Pobierz pierwszą dostępną grupę bezpieczeństwa
+        const securityGroups = await listInputSecurityGroups(region);
+        if (!securityGroups || securityGroups.length === 0) {
+            throw new Error('No security groups available in the region');
+        }
+        const securityGroupId = securityGroups[0].Id;
+        
+        // Pobierz pierwszy dostępny kanał MediaPackage
+        const mpChannels = await listMediaPackageChannels(region);
+        if (!mpChannels || mpChannels.length === 0) {
+            throw new Error('No MediaPackage channels available in the region');
+        }
+        const mediaPackageChannelId = mpChannels[0].Id;
+        
+        // Stwórz input RTMP
+        const inputResponse = await createRtmpInput(region, resourceNames.inputName, 'STANDARD', securityGroupId);
+        const inputId = inputResponse.Input.Id;
+        
+        // Stwórz kanał
+        const channelData = {
+            channelName: resourceNames.channelName,
+            inputId: inputId,
+            channelClass: 'STANDARD',
+            mediaPackageChannelId: mediaPackageChannelId
+        };
+        const channelResponse = await createChannel(region, channelData);
+        const channelId = channelResponse.Channel.Id;
+        
+        // Oblicz datę końca (14 dni później)
+        const startDate = new Date(lifetimeStart);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 14);
+        
+        // Zapisz event do pliku
+        const eventsData = await readEventsFile();
+        eventsData.events[channelId] = {
+            eventName: eventName,
+            channelId: channelId,
+            inputIds: [inputId],
+            outputIds: [mediaPackageChannelId],
+            lifetime: {
+                start: lifetimeStart,
+                end: endDate.toISOString().split('T')[0]
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            scheduler: [],
+            region: region
+        };
+        
+        await writeEventsFile(eventsData);
+        
+        res.json({ 
+            success: true, 
+            event: eventsData.events[channelId],
+            message: `Event "${eventName}" został pomyślnie utworzony`
+        });
+        
+    } catch (error) {
+        console.error('Error creating event:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/events/:channelId/update', async (req, res) => {
+    const { channelId } = req.params;
+    const { eventName, lifetimeStart, lifetimeEnd } = req.body;
+    
+    try {
+        const eventsData = await readEventsFile();
+        
+        if (!eventsData.events[channelId]) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        
+        // Zaktualizuj dane eventu
+        if (eventName) eventsData.events[channelId].eventName = eventName;
+        if (lifetimeStart) eventsData.events[channelId].lifetime.start = lifetimeStart;
+        if (lifetimeEnd) eventsData.events[channelId].lifetime.end = lifetimeEnd;
+        eventsData.events[channelId].updatedAt = new Date().toISOString();
+        
+        await writeEventsFile(eventsData);
+        
+        res.json({ 
+            success: true, 
+            event: eventsData.events[channelId],
+            message: 'Event został zaktualizowany'
+        });
+        
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Trasy API dla S3
 app.get('/api/s3-assets', async (req, res) => {
     const { region } = req.query;
     if (!region) return res.status(400).json({ error: "Region not specified." });
