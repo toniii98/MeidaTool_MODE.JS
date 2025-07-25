@@ -10,7 +10,9 @@ const {
     DeleteChannelCommand,
     DeleteInputCommand,
     ListInputDevicesCommand,
-    ListInputSecurityGroupsCommand
+    ListInputSecurityGroupsCommand,
+    DescribeChannelCommand, // Nowy import
+    DescribeInputCommand    // Nowy import
 } = require("@aws-sdk/client-medialive");
 const { MediaConnectClient, ListFlowsCommand } = require("@aws-sdk/client-mediaconnect");
 const { MediaPackageClient, ListChannelsCommand: ListMPChannelsCommand } = require("@aws-sdk/client-mediapackage");
@@ -33,11 +35,10 @@ function getCredentials() {
 
 // Funkcja generująca spójne nazwy dla zasobów AWS na podstawie nazwy eventu
 function generateResourceNames(eventName) {
-    // Zamień spacje na podkreślenia i usuń niedozwolone znaki
     const baseName = eventName
         .replace(/\s+/g, '_')
         .replace(/[^a-zA-Z0-9_-]/g, '')
-        .substring(0, 40); // Ogranicz długość do 40 znaków
+        .substring(0, 40);
     
     return {
         channelName: `${baseName}_channel`,
@@ -155,6 +156,32 @@ async function listMediaPackageChannels(region) {
     }
 }
 
+// --- Funkcje opisujące zasoby (Describe) ---
+async function describeChannel(region, channelId) {
+    const credentials = getCredentials();
+    const mediaLiveClient = new MediaLiveClient({ region, credentials });
+    try {
+        const command = new DescribeChannelCommand({ ChannelId: channelId });
+        return await mediaLiveClient.send(command);
+    } catch (error) {
+        console.error(`Error describing channel ${channelId}:`, error);
+        throw error;
+    }
+}
+
+async function describeInput(region, inputId) {
+    const credentials = getCredentials();
+    const mediaLiveClient = new MediaLiveClient({ region, credentials });
+    try {
+        const command = new DescribeInputCommand({ InputId: inputId });
+        return await mediaLiveClient.send(command);
+    } catch (error) {
+        console.error(`Error describing input ${inputId}:`, error);
+        throw error;
+    }
+}
+
+
 // --- Funkcje tworzące zasoby ---
 async function createRtmpInput(region, name, inputClass = 'STANDARD', securityGroupId) {
     const credentials = getCredentials();
@@ -218,7 +245,6 @@ async function createChannel(region, channelData) {
     if (template.Destinations && template.Destinations[0].MediaPackageSettings) {
         template.Destinations[0].MediaPackageSettings[0].ChannelId = channelData.mediaPackageChannelId;
         
-        // NOWA ZMIANA: Ustawianie nazwy grupy wyjściowej
         if (template.EncoderSettings && template.EncoderSettings.OutputGroups && template.EncoderSettings.OutputGroups[0]) {
             template.EncoderSettings.OutputGroups[0].Name = channelData.mediaPackageChannelId;
         }
@@ -330,6 +356,8 @@ module.exports = {
     listInputSecurityGroups,
     listMediaConnectFlows,
     listMediaPackageChannels,
+    describeChannel,
+    describeInput,
     createRtmpInput,
     createMp4Input,
     createChannel,

@@ -26,12 +26,15 @@ const {
     stopChannel,
     deleteChannel,
     deleteInput,
-    generateResourceNames
+    generateResourceNames,
+    describeChannel,
+    describeInput
 } = require('./services/awsService');
 
 // Inicjalizacja aplikacji Express
 const app = express();
 const port = process.env.PORT || 3000;
+const EVENTS_FILE_PATH = path.join(__dirname, 'events.json');
 
 // Ustawienia aplikacji
 app.set('view engine', 'ejs');
@@ -43,21 +46,65 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- Funkcje pomocnicze ---
 async function readEventsFile() {
     try {
-        const eventsPath = path.join(__dirname, 'events.json');
-        const data = await fs.readFile(eventsPath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
+        const data = await fs.readFile(EVENTS_FILE_PATH, 'utf8');
+        if (data.trim() === '') {
             return { events: {} };
         }
+        const parsedData = JSON.parse(data);
+        if (typeof parsedData !== 'object' || parsedData === null || !parsedData.hasOwnProperty('events') || typeof parsedData.events !== 'object' || Array.isArray(parsedData.events)) {
+             console.warn('Nieprawidłowa struktura events.json, resetowanie do domyślnej.');
+             await writeEventsFile({ events: {} });
+             return { events: {} }; 
+        }
+        return parsedData;
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            await writeEventsFile({ events: {} });
+            return { events: {} };
+        }
+        if (error instanceof SyntaxError) {
+            console.error("Błąd parsowania pliku events.json. Plik jest prawdopodobnie uszkodzony. Resetowanie do pustej struktury.", error);
+            await writeEventsFile({ events: {} });
+            return { events: {} };
+        }
+        console.error("Błąd odczytu pliku events.json:", error);
         throw error;
     }
 }
 
 async function writeEventsFile(data) {
-    const eventsPath = path.join(__dirname, 'events.json');
-    await fs.writeFile(eventsPath, JSON.stringify(data, null, 2), 'utf8');
+    await fs.writeFile(EVENTS_FILE_PATH, JSON.stringify(data, null, 2), 'utf8');
 }
+
+// NOWA FUNKCJA: Synchronizacja pliku events.json z rzeczywistym stanem w AWS
+async function synchronizeEventsWithAWS(region) {
+    console.log(`Rozpoczynanie synchronizacji eventów dla regionu: ${region}`);
+    try {
+        const eventsData = await readEventsFile();
+        const awsChannels = await listChannels(region);
+
+        const awsChannelIds = new Set(awsChannels.map(c => c.Id));
+        let changesMade = false;
+
+        for (const channelId in eventsData.events) {
+            if (eventsData.events[channelId].region === region && !awsChannelIds.has(channelId)) {
+                console.log(`Event ${eventsData.events[channelId].eventName} (ID: ${channelId}) nie ma odpowiadającego kanału w AWS. Usuwanie...`);
+                delete eventsData.events[channelId];
+                changesMade = true;
+            }
+        }
+
+        if (changesMade) {
+            console.log("Zapisywanie zmian w events.json po synchronizacji.");
+            await writeEventsFile(eventsData);
+        } else {
+            console.log("Synchronizacja zakończona, brak zmian.");
+        }
+    } catch (error) {
+        console.error("Błąd podczas synchronizacji eventów z AWS:", error);
+    }
+}
+
 
 // --- Definicja Tras (Routes) ---
 
@@ -83,6 +130,9 @@ app.get('/', async (req, res) => {
   }
 
   try {
+    // Synchronizuj eventy przed załadowaniem danych
+    await synchronizeEventsWithAWS(currentRegion);
+
     const [channelsResponse, inputsResponse, regionsResponse, devicesResponse, securityGroupsResponse, flowsResponse, mpChannelsResponse] = await Promise.all([
       listChannels(currentRegion),
       listInputs(currentRegion),
@@ -136,70 +186,170 @@ app.get('/api/events', async (req, res) => {
     }
 });
 
+app.get('/api/events/:channelId', async (req, res) => {
+    try {
+        const { channelId } = req.params;
+        const eventsData = await readEventsFile();
+        const event = eventsData.events[channelId];
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found in events.json. It might have been deleted.' });
+        }
+
+        let channelDetails;
+        const maxRetries = 5;
+        const retryDelay = 2000; // 2 sekundy
+
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                channelDetails = await describeChannel(event.region, event.channelId);
+                break; // Sukces, wyjdź z pętli
+            } catch (awsError) {
+                if (awsError.name === 'NotFoundException' && i < maxRetries - 1) {
+                    console.log(`Kanał ${event.channelId} nie jest jeszcze gotowy. Próba ${i + 1}/${maxRetries}. Ponawianie za ${retryDelay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                } else {
+                    console.error(`AWS Error describing channel ${event.channelId}:`, awsError);
+                    throw new Error(`Nie udało się pobrać szczegółów kanału z AWS. Sprawdź, czy zasób istnieje w regionie ${event.region}.`);
+                }
+            }
+        }
+        
+        let inputDetails;
+        try {
+            inputDetails = await Promise.all(
+                event.inputIds.map(id => describeInput(event.region, id))
+            );
+        } catch (awsError) {
+            console.error(`AWS Error describing inputs for channel ${event.channelId}:`, awsError);
+            throw new Error(`Nie udało się pobrać szczegółów inputu z AWS.`);
+        }
+
+        const inputNames = inputDetails.map(input => input.Name || input.Id);
+
+        const fullEventDetails = {
+            ...event,
+            pipelineDetails: channelDetails.PipelineDetails || [],
+            inputNames: inputNames,
+            outputNames: event.outputIds
+        };
+        
+        res.json(fullEventDetails);
+
+    } catch (error) {
+        console.error('Error in /api/events/:channelId handler:', error);
+        res.status(500).json({ error: error.message || 'Wystąpił wewnętrzny błąd serwera.' });
+    }
+});
+
+
 app.post('/api/events/create', async (req, res) => {
-    const { eventName, lifetimeStart, region } = req.body;
+    const { 
+        eventName, 
+        lifetimeStart, 
+        region,
+        channelClass,
+        inputType,
+        outputId,
+        sourceId,
+        sourceId1,
+        sourceId2,
+    } = req.body;
     
-    if (!eventName || !lifetimeStart || !region) {
-        return res.status(400).json({ error: 'Missing required fields: eventName, lifetimeStart, region' });
+    if (!eventName || !lifetimeStart || !region || !channelClass || !inputType || !outputId) {
+        return res.status(400).json({ error: 'Brak wszystkich wymaganych pól.' });
     }
 
     try {
-        // Generuj nazwy zasobów
         const resourceNames = generateResourceNames(eventName);
-        
-        // Pobierz pierwszą dostępną grupę bezpieczeństwa
-        const securityGroups = await listInputSecurityGroups(region);
-        if (!securityGroups || securityGroups.length === 0) {
-            throw new Error('No security groups available in the region');
+        let inputResponse;
+
+        switch (inputType) {
+            case 'RTMP_PUSH': {
+                const securityGroups = await listInputSecurityGroups(region);
+                if (!securityGroups || securityGroups.length === 0) {
+                    throw new Error('Brak dostępnych grup bezpieczeństwa w tym regionie.');
+                }
+                const securityGroupId = securityGroups[0].Id;
+                inputResponse = await createRtmpInput(region, resourceNames.inputName, channelClass, securityGroupId);
+                break;
+            }
+            case 'MP4_FILE': {
+                if (!sourceId) throw new Error('Brak ścieżki do pliku S3 (sourceId).');
+                const bucketName = process.env.S3_ASSET_BUCKET;
+                const urls = [`s3://${bucketName}/${sourceId}`];
+                if (channelClass === 'STANDARD') {
+                    urls.push(`s3://${bucketName}/${sourceId}`);
+                }
+                inputResponse = await createMp4Input(region, resourceNames.inputName, urls);
+                break;
+            }
+            case 'INPUT_DEVICE': { 
+                if (!sourceId1) throw new Error('Brak ID urządzenia Link dla pipeline 0 (sourceId1).');
+                const deviceIds = [sourceId1];
+                if (channelClass === 'STANDARD') {
+                    if (!sourceId2) throw new Error('Brak ID urządzenia Link dla pipeline 1 (sourceId2) w trybie Standard.');
+                    deviceIds.push(sourceId2);
+                }
+                inputResponse = await createLinkInput(region, resourceNames.inputName, deviceIds);
+                break;
+            }
+            case 'MEDIACONNECT': {
+                if (!sourceId1) throw new Error('Brak ARN dla MediaConnect Flow dla pipeline 0 (sourceId1).');
+                const flowArns = [sourceId1];
+                if (channelClass === 'STANDARD') {
+                    if (!sourceId2) throw new Error('Brak ARN dla MediaConnect Flow dla pipeline 1 (sourceId2) w trybie Standard.');
+                    flowArns.push(sourceId2);
+                }
+                inputResponse = await createMediaConnectInput(region, resourceNames.inputName, flowArns);
+                break;
+            }
+            default:
+                throw new Error(`Nieobsługiwany typ inputu: ${inputType}`);
         }
-        const securityGroupId = securityGroups[0].Id;
-        
-        // Pobierz pierwszy dostępny kanał MediaPackage
-        const mpChannels = await listMediaPackageChannels(region);
-        if (!mpChannels || mpChannels.length === 0) {
-            throw new Error('No MediaPackage channels available in the region');
-        }
-        const mediaPackageChannelId = mpChannels[0].Id;
-        
-        // Stwórz input RTMP
-        const inputResponse = await createRtmpInput(region, resourceNames.inputName, 'STANDARD', securityGroupId);
+
         const inputId = inputResponse.Input.Id;
         
-        // Stwórz kanał
         const channelData = {
             channelName: resourceNames.channelName,
             inputId: inputId,
-            channelClass: 'STANDARD',
-            mediaPackageChannelId: mediaPackageChannelId
+            channelClass: channelClass,
+            mediaPackageChannelId: outputId
         };
         const channelResponse = await createChannel(region, channelData);
         const channelId = channelResponse.Channel.Id;
         
-        // Oblicz datę końca (14 dni później)
-        const startDate = new Date(lifetimeStart);
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 14);
+        const eventStartDate = new Date(lifetimeStart);
+        const bookingStartDate = new Date(eventStartDate);
+        bookingStartDate.setDate(eventStartDate.getDate() - 7);
+        const bookingEndDate = new Date(eventStartDate);
+        bookingEndDate.setDate(eventStartDate.getDate() + 14);
         
-        // Zapisz event do pliku
         const eventsData = await readEventsFile();
+        
         eventsData.events[channelId] = {
             eventName: eventName,
             channelId: channelId,
             inputIds: [inputId],
-            outputIds: [mediaPackageChannelId],
+            outputIds: [outputId],
             lifetime: {
-                start: lifetimeStart,
-                end: endDate.toISOString().split('T')[0]
+                start: eventStartDate.toISOString()
+            },
+            booking: {
+                start: bookingStartDate.toISOString().split('T')[0],
+                end: bookingEndDate.toISOString().split('T')[0]
             },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             scheduler: [],
-            region: region
+            region: region,
+            channelClass: channelClass,
+            inputType: inputType
         };
         
         await writeEventsFile(eventsData);
         
-        res.json({ 
+        res.status(201).json({ 
             success: true, 
             event: eventsData.events[channelId],
             message: `Event "${eventName}" został pomyślnie utworzony`
@@ -213,7 +363,7 @@ app.post('/api/events/create', async (req, res) => {
 
 app.put('/api/events/:channelId/update', async (req, res) => {
     const { channelId } = req.params;
-    const { eventName, lifetimeStart, lifetimeEnd } = req.body;
+    const { eventName, lifetimeStart } = req.body;
     
     try {
         const eventsData = await readEventsFile();
@@ -222,10 +372,20 @@ app.put('/api/events/:channelId/update', async (req, res) => {
             return res.status(404).json({ error: 'Event not found' });
         }
         
-        // Zaktualizuj dane eventu
-        if (eventName) eventsData.events[channelId].eventName = eventName;
-        if (lifetimeStart) eventsData.events[channelId].lifetime.start = lifetimeStart;
-        if (lifetimeEnd) eventsData.events[channelId].lifetime.end = lifetimeEnd;
+        if (eventName) {
+            eventsData.events[channelId].eventName = eventName;
+        }
+        if (lifetimeStart) {
+            const eventStartDate = new Date(lifetimeStart);
+            const bookingStartDate = new Date(eventStartDate);
+            bookingStartDate.setDate(eventStartDate.getDate() - 7);
+            const bookingEndDate = new Date(eventStartDate);
+            bookingEndDate.setDate(eventStartDate.getDate() + 14);
+
+            eventsData.events[channelId].lifetime.start = eventStartDate.toISOString();
+            eventsData.events[channelId].booking.start = bookingStartDate.toISOString().split('T')[0];
+            eventsData.events[channelId].booking.end = bookingEndDate.toISOString().split('T')[0];
+        }
         eventsData.events[channelId].updatedAt = new Date().toISOString();
         
         await writeEventsFile(eventsData);
@@ -269,7 +429,6 @@ app.post('/inputs/create-mp4', async (req, res) => {
     const { inputName, inputClass, s3FilePath, region } = req.body;
     const bucketName = process.env.S3_ASSET_BUCKET;
     const urls = [`s3://${bucketName}/${s3FilePath}`];
-    // Jeśli wybrano klasę STANDARD, AWS wymaga dwóch identycznych URLi
     if (inputClass === 'STANDARD') {
         urls.push(`s3://${bucketName}/${s3FilePath}`);
     }
@@ -321,32 +480,60 @@ app.post('/inputs/create-mediaconnect', async (req, res) => {
 
 // Trasy POST do zarządzania i usuwania
 app.post('/channels/start', async (req, res) => {
-    const { channelId, region } = req.body;
+    const { channelId, region: currentRegion } = req.body;
     try {
-        await startChannel(region, channelId);
-        res.redirect(`/?region=${region}&message=Wysłano polecenie uruchomienia kanału ${channelId}.&messageStatus=success`);
+        const eventsData = await readEventsFile();
+        const event = eventsData.events[channelId];
+        const eventRegion = event ? event.region : currentRegion;
+        await startChannel(eventRegion, channelId);
+        res.redirect(`/?region=${currentRegion}&message=Wysłano polecenie uruchomienia kanału ${channelId}.&messageStatus=success`);
     } catch (error) {
-        res.redirect(`/?region=${region}&message=Błąd podczas uruchamiania kanału: ${error.message}&messageStatus=danger`);
+        res.redirect(`/?region=${currentRegion}&message=Błąd podczas uruchamiania kanału: ${error.message}&messageStatus=danger`);
     }
 });
 
 app.post('/channels/stop', async (req, res) => {
-    const { channelId, region } = req.body;
+    const { channelId, region: currentRegion } = req.body;
     try {
-        await stopChannel(region, channelId);
-        res.redirect(`/?region=${region}&message=Wysłano polecenie zatrzymania kanału ${channelId}.&messageStatus=success`);
+        const eventsData = await readEventsFile();
+        const event = eventsData.events[channelId];
+        const eventRegion = event ? event.region : currentRegion;
+        await stopChannel(eventRegion, channelId);
+        res.redirect(`/?region=${currentRegion}&message=Wysłano polecenie zatrzymania kanału ${channelId}.&messageStatus=success`);
     } catch (error) {
-        res.redirect(`/?region=${region}&message=Błąd podczas zatrzymywania kanału: ${error.message}&messageStatus=danger`);
+        res.redirect(`/?region=${currentRegion}&message=Błąd podczas zatrzymywania kanału: ${error.message}&messageStatus=danger`);
     }
 });
 
+// ZAKTUALIZOWANA LOGIKA USUWANIA
 app.post('/channels/delete', async (req, res) => {
-    const { channelId, region } = req.body;
+    const { channelId, region: currentRegion } = req.body;
     try {
-        await deleteChannel(region, channelId);
-        res.redirect(`/?region=${region}&message=Kanał ${channelId} został usunięty.&messageStatus=success`);
+        const eventsData = await readEventsFile();
+        const eventToDelete = eventsData.events[channelId];
+        const eventRegion = eventToDelete ? eventToDelete.region : currentRegion;
+
+        await deleteChannel(eventRegion, channelId);
+
+        if (eventToDelete && eventToDelete.inputIds) {
+            for (const inputId of eventToDelete.inputIds) {
+                try {
+                    console.log(`Usuwanie powiązanego inputu ${inputId} dla kanału ${channelId}`);
+                    await deleteInput(eventRegion, inputId);
+                } catch (inputError) {
+                    console.error(`Nie udało się usunąć inputu ${inputId}:`, inputError.message);
+                }
+            }
+        }
+        
+        if (eventsData.events[channelId]) {
+            delete eventsData.events[channelId];
+            await writeEventsFile(eventsData);
+        }
+
+        res.redirect(`/?region=${currentRegion}&message=Kanał ${channelId} i powiązane zasoby zostały usunięte.&messageStatus=success`);
     } catch (error) {
-        res.redirect(`/?region=${region}&message=Błąd podczas usuwania kanału: ${error.message}&messageStatus=danger`);
+        res.redirect(`/?region=${currentRegion}&message=Błąd podczas usuwania kanału: ${error.message}&messageStatus=danger`);
     }
 });
 
