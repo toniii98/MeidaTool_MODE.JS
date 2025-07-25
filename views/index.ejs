@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AWS Media Tool - <%= pageTitle %></title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Usunięto Alpine.js -->
     <style>
-        [x-cloak] { display: none !important; }
+        .hidden { display: none; }
         .btn {
             padding: 0.25rem 0.75rem;
             border-radius: 0.375rem;
@@ -23,6 +23,11 @@
         .btn-red:hover { background-color: #b91c1c; }
         .btn-gray { background-color: #6b7280; }
         .btn-gray:hover { background-color: #4b5563; }
+        /* Style dla aktywnej zakładki */
+        .tab-active {
+            border-color: #3b82f6 !important; /* border-blue-500 */
+            color: #2563eb !important; /* text-blue-600 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
@@ -64,18 +69,18 @@
 
                 <!-- Formularze tworzenia zasobów -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-xl shadow-md" x-data="{ tab: 'rtmp' }">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
                         <h2 class="text-xl font-semibold mb-2">Krok 1: Stwórz nowy Input</h2>
                         <div class="border-b border-gray-200">
                             <nav class="-mb-px flex space-x-4" aria-label="Tabs">
-                                <button @click="tab = 'rtmp'" :class="{ 'border-blue-500 text-blue-600': tab === 'rtmp', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'rtmp' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">RTMP Push</button>
-                                <button @click="tab = 'mediaconnect'" :class="{ 'border-blue-500 text-blue-600': tab === 'mediaconnect', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'mediaconnect' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">MediaConnect</button>
-                                <button @click="tab = 'mp4'" :class="{ 'border-blue-500 text-blue-600': tab === 'mp4', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'mp4' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">MP4 (S3)</button>
-                                <button @click="tab = 'link'" :class="{ 'border-blue-500 text-blue-600': tab === 'link', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'link' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Link</button>
+                                <button data-tab-target="rtmp" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 tab-active">RTMP Push</button>
+                                <button data-tab-target="mediaconnect" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">MediaConnect</button>
+                                <button data-tab-target="mp4" id="mp4-tab-button" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">MP4 (S3)</button>
+                                <button data-tab-target="link" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Link</button>
                             </nav>
                         </div>
                         <div class="pt-4">
-                           <div x-show="tab === 'rtmp'" x-cloak>
+                           <div id="panel-rtmp" class="tab-panel">
                                <form action="/inputs/create-rtmp" method="POST">
                                     <input type="hidden" name="region" value="<%= currentRegion %>">
                                     <div class="mb-4">
@@ -104,7 +109,7 @@
                                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" <% if (!currentRegion || !inputSecurityGroups || inputSecurityGroups.length === 0) { %>disabled<% } %>>Stwórz Input RTMP</button>
                                </form>
                            </div>
-                           <div x-show="tab === 'mediaconnect'" x-cloak x-data="{ flowCount: 1 }">
+                           <div id="panel-mediaconnect" class="tab-panel hidden">
                                <form action="/inputs/create-mediaconnect" method="POST">
                                     <input type="hidden" name="region" value="<%= currentRegion %>">
                                     <div class="mb-4">
@@ -113,9 +118,9 @@
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
-                                        <div class="flex items-center space-x-4">
-                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="SINGLE" @click="flowCount = 1" checked><span class="ml-2">Single</span></label>
-                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="STANDARD" @click="flowCount = 2"><span class="ml-2">Standard</span></label>
+                                        <div class="flex items-center space-x-4" id="mc-class-radios">
+                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="SINGLE" class="form-radio" checked><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClassMc" value="STANDARD" class="form-radio"><span class="ml-2">Standard</span></label>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -131,9 +136,9 @@
                                             <% } %>
                                         </select>
                                     </div>
-                                    <div class="mb-4" x-show="flowCount === 2" x-cloak>
+                                    <div id="mc-flow2-container" class="mb-4 hidden">
                                         <label for="flowArn2" class="block text-sm font-bold text-gray-700 mb-2">MediaConnect Flow (Pipeline 1)</label>
-                                        <select id="flowArn2" name="flowArn2" class="shadow-sm w-full border rounded-lg py-2 px-3" :required="flowCount === 2">
+                                        <select id="flowArn2" name="flowArn2" class="shadow-sm w-full border rounded-lg py-2 px-3">
                                             <option value="">-- Wybierz drugi flow --</option>
                                             <% if (mediaConnectFlows && mediaConnectFlows.length > 0) { %>
                                                 <% mediaConnectFlows.forEach(flow => { %>
@@ -145,7 +150,7 @@
                                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" <% if (!mediaConnectFlows || mediaConnectFlows.length === 0) { %>disabled<% } %>>Stwórz Input MediaConnect</button>
                                </form>
                            </div>
-                           <div x-show="tab === 'mp4'" x-cloak x-data="s3Browser" x-init="fetchAssets('<%= currentRegion %>')">
+                           <div id="panel-mp4" class="tab-panel hidden">
                                <form action="/inputs/create-mp4" method="POST">
                                     <input type="hidden" name="region" value="<%= currentRegion %>">
                                     <div class="mb-4">
@@ -161,23 +166,14 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="s3FilePath" class="block text-sm font-bold text-gray-700 mb-2">Wybierz plik .mp4</label>
-                                        <select id="s3FilePath" name="s3FilePath" class="shadow-sm w-full border rounded-lg py-2 px-3" required :disabled="loading || error || assets.length === 0">
-                                            <template x-if="loading"><option>Ładowanie listy plików...</option></template>
-                                            <template x-if="error"><option x-text="error"></option></template>
-                                            <template x-if="!loading && !error && assets.length > 0">
-                                                <template x-for="asset in assets" :key="asset">
-                                                    <option :value="asset" x-text="asset.replace('<%= process.env.S3_ASSET_PREFIX || '' %>', '')"></option>
-                                                </template>
-                                            </template>
-                                            <template x-if="!loading && !error && assets.length === 0">
-                                                <option disabled>Nie znaleziono plików .mp4 w s3://<%= process.env.S3_ASSET_BUCKET %></option>
-                                            </template>
+                                        <select id="s3FilePath" name="s3FilePath" class="shadow-sm w-full border rounded-lg py-2 px-3" required disabled>
+                                            <option>Kliknij zakładkę, aby załadować...</option>
                                         </select>
                                     </div>
-                                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" :disabled="loading || error || assets.length === 0">Stwórz Input MP4</button>
+                                    <button type="submit" id="createMp4Button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg" disabled>Stwórz Input MP4</button>
                                </form>
                            </div>
-                           <div x-show="tab === 'link'" x-cloak x-data="{ inputClass: 'SINGLE_PIPELINE' }">
+                           <div id="panel-link" class="tab-panel hidden">
                                 <form action="/inputs/create-link" method="POST">
                                     <input type="hidden" name="region" value="<%= currentRegion %>">
                                     <div class="mb-4">
@@ -186,9 +182,9 @@
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-bold text-gray-700 mb-2">Klasa Inputu</label>
-                                        <div class="flex items-center space-x-4">
-                                            <label class="flex items-center"><input type="radio" name="inputClassRadioLink" value="SINGLE_PIPELINE" x-model="inputClass"><span class="ml-2">Single</span></label>
-                                            <label class="flex items-center"><input type="radio" name="inputClassRadioLink" value="STANDARD" x-model="inputClass"><span class="ml-2">Standard</span></label>
+                                        <div class="flex items-center space-x-4" id="link-class-radios">
+                                            <label class="flex items-center"><input type="radio" name="inputClassLink" value="SINGLE_PIPELINE" class="form-radio" checked><span class="ml-2">Single</span></label>
+                                            <label class="flex items-center"><input type="radio" name="inputClassLink" value="STANDARD" class="form-radio"><span class="ml-2">Standard</span></label>
                                         </div>
                                     </div>
                                     <div class="mb-4">
@@ -204,9 +200,9 @@
                                             <% } %>
                                         </select>
                                     </div>
-                                    <div class="mb-4" x-show="inputClass === 'STANDARD'" x-cloak>
+                                    <div id="link-device2-container" class="mb-4 hidden">
                                         <label for="linkDeviceId2" class="block text-sm font-bold text-gray-700 mb-2">Urządzenie Link (Pipeline 1)</label>
-                                        <select id="linkDeviceId2" name="linkDeviceId2" class="shadow-sm w-full border rounded-lg py-2 px-3" :required="inputClass === 'STANDARD'">
+                                        <select id="linkDeviceId2" name="linkDeviceId2" class="shadow-sm w-full border rounded-lg py-2 px-3">
                                             <option value="">-- Wybierz drugie urządzenie --</option>
                                             <% if (linkDevices && linkDevices.length > 0) { %>
                                                 <% linkDevices.forEach(device => { %>
@@ -383,39 +379,106 @@
         </main>
     </div>
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('s3Browser', () => ({
-                assets: [],
-                loading: true,
-                error: null,
-                fetchAssets(region) {
-                    if (!region) {
-                        this.error = 'Region nie jest wybrany.';
-                        this.loading = false;
-                        return;
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+                    button.classList.add('tab-active');
+                    const targetPanelId = button.getAttribute('data-tab-target');
+                    tabPanels.forEach(panel => {
+                        if (panel.id === `panel-${targetPanelId}`) {
+                            panel.classList.remove('hidden');
+                        } else {
+                            panel.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+            // --- Logika dla dynamicznych formularzy ---
+            
+            // MediaConnect
+            const mcRadios = document.getElementById('mc-class-radios');
+            const mcFlow2Container = document.getElementById('mc-flow2-container');
+            const mcFlow2Select = document.getElementById('flowArn2');
+            if (mcRadios) {
+                mcRadios.addEventListener('change', (event) => {
+                    if (event.target.value === 'STANDARD') {
+                        mcFlow2Container.classList.remove('hidden');
+                        mcFlow2Select.required = true;
+                    } else {
+                        mcFlow2Container.classList.add('hidden');
+                        mcFlow2Select.required = false;
                     }
-                    this.loading = true;
-                    this.error = null;
-                    fetch(`/api/s3-assets?region=${region}`)
-                        .then(response => {
-                            if (!response.ok) {
-                                return response.json().then(err => { throw new Error(err.error || `Błąd serwera: ${response.status}`) });
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            this.assets = data;
-                        })
-                        .catch(error => {
-                            console.error("Fetch error:", error);
-                            this.error = `Błąd: ${error.message}`;
-                        })
-                        .finally(() => {
-                            this.loading = false;
+                });
+            }
+
+            // Link
+            const linkRadios = document.getElementById('link-class-radios');
+            const linkDevice2Container = document.getElementById('link-device2-container');
+            const linkDevice2Select = document.getElementById('linkDeviceId2');
+            if (linkRadios) {
+                linkRadios.addEventListener('change', (event) => {
+                    if (event.target.value === 'STANDARD') {
+                        linkDevice2Container.classList.remove('hidden');
+                        linkDevice2Select.required = true;
+                    } else {
+                        linkDevice2Container.classList.add('hidden');
+                        linkDevice2Select.required = false;
+                    }
+                });
+            }
+
+            // --- Logika dla zakładki MP4 (S3) ---
+            const mp4TabButton = document.getElementById('mp4-tab-button');
+            const s3Select = document.getElementById('s3FilePath');
+            const createMp4Button = document.getElementById('createMp4Button');
+            let s3AssetsLoaded = false;
+
+            async function fetchS3Assets() {
+                if (s3AssetsLoaded) return;
+
+                try {
+                    const response = await fetch('/api/s3-assets?region=eu-west-1');
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error || `Błąd serwera: ${response.status}`);
+                    }
+                    const assets = await response.json();
+                    
+                    s3Select.innerHTML = ''; 
+
+                    if (assets.length > 0) {
+                        assets.forEach(asset => {
+                            const option = document.createElement('option');
+                            option.value = asset;
+                            option.textContent = asset.replace('<%= process.env.S3_ASSET_PREFIX || "" %>', '');
+                            s3Select.appendChild(option);
                         });
+                        s3Select.disabled = false;
+                        createMp4Button.disabled = false;
+                    } else {
+                        const option = document.createElement('option');
+                        option.textContent = 'Nie znaleziono plików .mp4';
+                        option.disabled = true;
+                        s3Select.appendChild(option);
+                    }
+                    s3AssetsLoaded = true;
+
+                } catch (error) {
+                    console.error("Fetch error:", error);
+                    s3Select.innerHTML = '';
+                    const option = document.createElement('option');
+                    option.textContent = `Błąd: ${error.message}`;
+                    option.disabled = true;
+                    s3Select.appendChild(option);
                 }
-            }))
-        })
+            }
+            mp4TabButton.addEventListener('click', fetchS3Assets);
+        });
     </script>
 </body>
 </html>
